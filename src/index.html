@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas WFC</title>
+</head>
+<body>
+    <h1>Canvas Wave Function Collapse</h1>
+    <input type="text" id="seed" placeholder="Seed (optional)" />
+    <div>
+        <canvas id="mazeCanvas" width="800" height="600" style="border:1px solid #000;"></canvas>
+    </div>
+    <div>
+        <button id="reset">⏪</button>
+        <button id="step">🐞</button>
+        <button id="play">▶️</button>
+    </div>
+    <div id="debugDiv" style="display:none;">
+        <canvas id="debugCanvas" width="800" height="600" style="border:1px solid #000; display:block;"></canvas>
+    </div>
+    <script type="application/javascript" src="wavemap.js"></script>
+    <script type="application/javascript" src="random.js"></script>
+    <script type="application/javascript" src="main.js"></script>
+</body>
+</html>
