@@ -5,15 +5,15 @@ const Colors = {
     '#': '#968a81', // Path / brown
     '@': '#1f1f1f', // Wall / black
     '~': '#1799ea', // water / blue
-    'X': '#aa2222', // Red tile
+    'X': '#764463', // Red tile
     'default': '#ccc' // Default color for undefined tiles
 }
 const DEBUG = false;
 
 // Tile and canvas size parameters
-    const tileSize = 20; // Size of each tile in pixels
+    const tileSize = 40; // Size of each tile in pixels
     const mapCols = 50;
-    const mapRows = 40;
+    const mapRows = 25;
 
 let random;
 
@@ -21,7 +21,7 @@ let random;
 /**
  * @typedef {Object} Context
  * @property {Map<Number,Tile>} tiles - Array of tile objects.
- * @property {Array<Array<Number>>} tileMap - 2D array representing the map of tiles.
+ * @property {WaveMap} tileMap - 2D array representing the map of tiles.
  * @property {Map<Number,TileChance>} Chances - Array of chances for each tile.
  * @property {CanvasRenderingContext2D} canvas - The canvas context for drawing.
  * @property {number} tileSize - Size of each tile in pixels.
@@ -69,6 +69,10 @@ window.onload = function () {
     stepButton.addEventListener('click', () => { Step(); });
     const playButton = document.getElementById('play');
     playButton.addEventListener('click', () => { Loop(); });
+    const stopButton = document.getElementById('stop');
+    stopButton.addEventListener('click', () => { Stop(); });
+
+    const speedSlider = document.getElementById('speedSlider');
 
     /**@type {Context} */
     const context = {
@@ -86,23 +90,23 @@ window.onload = function () {
     const centerY = Math.floor(mapRows / 2);
 
     function Reset() {
-        const largest = Math.max(mapCols, mapRows);
-        iterations = Math.ceil(Math.sqrt(2 * largest * largest));
+        
+        iterations = (mapCols * mapRows) / 4;
         const seed = document.getElementById('seed').value;
         random = new Random(seed);
         Set([
             { x: centerX, y: centerY, tile: 0 },
-            {x:1,y:0,tile:6},
-            //{x:0,y:1,tile:8},
+            //{x:1,y:0,tile:3},
+            //{x:0,y:1,tile:36},
         ]);
 
     }
-    Reset();
-
+    
     context.tiles = GenerateTiles(Tiles);
-    // Example usage:
+    
     const autoChances = GenerateChancesFromTiles(context.tiles);
     context.Chances = autoChances;
+    Reset();
 
     if (DEBUG) {
         const debugDiv = document.getElementById('debugDiv');
@@ -143,7 +147,7 @@ window.onload = function () {
         }
     }
 
-    Draw(context);
+    //Draw(context);
 
     function Step(callback) {
         Iterate(context);
@@ -154,21 +158,23 @@ window.onload = function () {
     function Loop() {
         if (iterations-- > 0) {
             Step(() => {
-                setTimeout(Loop, 50);
+                setTimeout(Loop, 250 - (speedSlider.value*40));
             });
         }
     }
     //Loop();
 
+    function Stop() {
+        iterations = 0;
+    }
+
 
     function Set(initialState) {
-        context.tileMap = Array.from({ length: mapCols }, (_, x) =>
-            Array.from({ length: mapRows })
-        );
+        context.tileMap = new WaveMap(context.mapRows, context.mapCols, context.Chances, random);
         context.canvas.clearRect(0, 0, canvasWidth, canvasHeight);
 
         for ({ x, y, tile } of initialState || []) {
-            context.tileMap[x][y] = tile;
+            context.tileMap.Fix(x,y,tile);
         }
 
         Draw(context);
@@ -226,11 +232,11 @@ function GenerateTiles(tiles) {
                 newImage[i][j] = tile.image[tile.image.length - j - 1][i];
             }
         }
-        return { image: newImage, constraint: tile.constraint, probability: tile.probability || 1 };
+        return { image: newImage, constraint: tile.constraint, probability: ('probability' in tile ? tile.probability : 1) };
     }
     function Flip(tile) {
         const newImage = tile.image.map(row => row.slice().reverse());
-        return { image: newImage, constraint: tile.constraint, probability: tile.probability || 1 };
+        return { image: newImage, constraint: tile.constraint, probability: ('probability' in tile ? tile.probability : 1) };
     }
 }
 
@@ -256,6 +262,10 @@ function GenerateChancesFromTiles(tiles) {
 
     /**@type {Map<Number,TileChance>} */
     const chances = new Map();
+    const sum = Array.from(tiles).reduce((acc, [tid, tile]) => 'probability' in tile ? acc + tile.probability : acc + 1, 0);
+    for (const [tid, tile] of tiles) {
+        tile.probability = ('probability' in tile ? tile.probability : 1) / sum;
+    }
 
     for (const [tid, tile] of tiles) {
 
@@ -274,7 +284,7 @@ function GenerateChancesFromTiles(tiles) {
                     chance[dir].set(otid, 0);
                 }
                 else if (edgeA === edgeB) {
-                    chance[dir].set(otid, oTile.probability || 1);
+                    chance[dir].set(otid, ('probability' in oTile ? oTile.probability : 1));
                 }
                 chances.set(tid, chance);
             }
@@ -289,128 +299,10 @@ function GenerateChancesFromTiles(tiles) {
  * @param {Context} context 
  */
 function Iterate(context) {
-    //get list of tiles that are empty but neighbor tiles that are not empty
-    const frontier = [];
-    for (let x = 0; x < context.mapCols; x++) {
-        for (let y = 0; y < context.mapRows; y++) {
-            if (context.tileMap[x][y] !== undefined) continue;
-            // Check if any neighbor is not undefined
-            if (
-                (y > 0 && context.tileMap[x][y - 1] !== undefined) ||
-                (x < context.mapCols - 1 && context.tileMap[x + 1][y] !== undefined) ||
-                (y < context.mapRows - 1 && context.tileMap[x][y + 1] !== undefined) ||
-                (x > 0 && context.tileMap[x - 1][y] !== undefined)
-            ) {
-                frontier.push({ x, y });
-            }
-        }
-    }
-    // Only process the frontier tiles instead of the whole map
-    for (const { x, y } of frontier) {
-        const neighborChances = GetChances(x, y);
-        if (neighborChances.size === 0) continue; // Skip if no neighbors
-
-        const totalChance = Array.from(neighborChances).reduce((a, [k, v]) => a + v.totalChance, 0);
-        if (totalChance === 0) continue;
-        // Select a random tile based on the chances
-        let nonBlocking = false;
-        let maxChecks = 20;
-        while (!nonBlocking && maxChecks-- > 0) {
-            const tileId = WeightedRandom(
-                Array.from(neighborChances.keys()),
-                Array.from(neighborChances.values()).map(v => v.totalChance),
-                1 // Temperature can be adjusted for randomness
-            );
-            context.tileMap[x][y] = tileId;
-
-            // Check if the selected tile is non-blocking
-            let valid = true;
-            for (const dir of Directions) {
-                const nx = x + (dir === 'right' ? 1 : dir === 'left' ? -1 : 0);
-                const ny = y + (dir === 'bottom' ? 1 : dir === 'top' ? -1 : 0);
-                const newChances = GetChances(nx, ny);
-                if (newChances && Array.from(newChances).reduce((a, [k, v]) => a + v.number, 0) === 0) {
-                    valid = false; // No chances means it's a dead end
-                    break;
-                } else {
-
-                }
-            }
-            if (!valid) {
-                nonBlocking = false;
-                context.tileMap[x][y] = undefined; // Reset the tile
-            } else {
-                nonBlocking = true;
-            }
-        }
-        Draw(context);
-    }
-
-    /**
-     * gets the neiboring chances
-     * @param {Number} x x coordinate of the tile
-     * @param {Number} y y coordinate of the tile
-     * @returns {Map<Number,CalculatedChance>} an array of chances for each tile
-     */
-    function GetChances(x, y) {
-        let neighbors = [
-            context.tileMap[x]?.[y - 1], // Top
-            context.tileMap[x + 1]?.[y], // Right
-            context.tileMap[x]?.[y + 1], // Bottom
-            context.tileMap[x - 1]?.[y] // Left
-        ];
-        // Filter out undefined neighbors
-        neighbors = neighbors
-            .map((n, i) => ({ tile: n, dir: Opposites[Directions[i]] }))
-            .filter(n => n.tile !== undefined);
-
-        /** @type {Map<Number,CalculatedChance>} */
-        const neighborChances = new Map();
-        if (!neighbors.length) return neighborChances; // Skip if no neighbors
-
-        neighbors.forEach(({ tile: n, dir }) => {
-            /**@type {Map<Number,Number>} */
-            const chances = context.Chances.get(n)[dir];
-            for (const [cTileId, chance] of chances) {
-                let tileChance = neighborChances.get(cTileId) || { number: 0, totalChance: 0 };
-                tileChance.number++;
-                tileChance.totalChance += chance;
-                neighborChances.set(cTileId, tileChance);
-            }
-        });
-
-        for (const [tId, tileChance] of neighborChances) {
-            // Normalize the chances
-            tileChance.totalChance = tileChance.totalChance / tileChance.number;
-            if (tileChance.totalChance <= 0 || tileChance.number < neighbors.length) {
-                neighborChances.delete(tId);
-            }
-        }
-
-        return neighborChances;
-    }
-}
-
-
-function WeightedRandom(items, probabilities, temperature = 1) {
-    if (temperature <= 0) {
-        throw new Error("Temperature must be greater than 0");
-    }
-
-    // Adjust probabilities based on temperature
-    const adjustedProbabilities = probabilities.map(p => Math.pow(p, 1 / temperature));
-    const total = adjustedProbabilities.reduce((sum, p) => sum + p, 0);
-    const normalizedProbabilities = adjustedProbabilities.map(p => p / total);
-
-    // Generate a random number
-    const randomValue = random.Next();
-    let cumulativeProbability = 0;
-
-    // Select item based on adjusted probabilities
-    for (let i = 0; i < items.length; i++) {
-        cumulativeProbability += normalizedProbabilities[i];
-        if (randomValue < cumulativeProbability) {
-            return items[i];
+    for (let i = 0; i < 4; i++) {
+        const coords = context.tileMap.GetMostCertain();
+        if(coords?.size > 0){
+            context.tileMap.Pick(coords.x, coords.y);
         }
     }
 }
@@ -422,25 +314,27 @@ function WeightedRandom(items, probabilities, temperature = 1) {
  */
 function Draw(context) {
     context.canvas.clearRect(0, 0, context.canvas.canvas.width, context.canvas.canvas.height);
-    const pixelSize = context.tileSize / 3; // Each tile image is 5x5
-
+    
     for (let x = 0; x < context.mapCols; x++) {
         for (let y = 0; y < context.mapRows; y++) {
-            const tileNo = context.tileMap[x][y];
-            const tile = context.tiles.get(tileNo);
-            if (!tile) continue;
-            // Draw the tile image
-            DrawTile(context.canvas, tile, x, y, context.tileSize);
+            const wave = context.tileMap.GetChances(x, y);
+            if (wave.size === 0) continue;
+            var t = Array.from(wave).sort(([,av],[,bv]) => bv-av);
+            for(let i=0; i<Math.min(3, t.length); i++){
+                const tile = context.tiles.get(t[i][0]);
+                // Draw the tile image
+                DrawTile(context.canvas, tile, x, y, context.tileSize, t[i][1]);
+            }
         }
     }
 }
 
-function DrawTile(canvas, tile, x, y, tileSize) {
+function DrawTile(canvas, tile, x, y, tileSize, opacity = 1) {
     const pixelSize = tileSize / tile.image.length;
     for (let ix = 0; ix < tile.image.length; ix++) {
         for (let iy = 0; iy < tile.image[ix].length; iy++) {
             canvas.fillStyle = Colors[tile.image[ix][iy]] || Colors['default'];
-
+            canvas.globalAlpha = opacity;
             canvas.fillRect(
                 Math.round(ix * pixelSize + x * tileSize),
                 Math.round(iy * pixelSize + y * tileSize),
@@ -449,6 +343,7 @@ function DrawTile(canvas, tile, x, y, tileSize) {
             );
         }
     }
+    canvas.globalAlpha = 1;
     if (DEBUG) {
         // draw the tile border
         canvas.strokeStyle = '#fff';
@@ -465,10 +360,10 @@ function DrawTile(canvas, tile, x, y, tileSize) {
         canvas.fillText(`${x},${y}`, x * tileSize + 2, y * tileSize + 12);
         canvas.fillText(tile.id, x * tileSize + 2, y * tileSize + 24);
         //draw tile constraint
-        canvas.fillStyle = '#fff';
+        canvas.fillStyle = '#aaa';
         canvas.font = '10px Courier New';
-        if(tile.probability){
-            canvas.fillText(`${tile.probability}x`, x * tileSize + 24, y * tileSize + 24);
+        if('probability' in tile){
+            canvas.fillText(`${Math.round(opacity*100)}%`, x * tileSize + 24, y * tileSize + 24);
         }
         if (tile.constraint) {
             canvas.fillText(JSON.stringify(tile.constraint), x * tileSize + 2, y * tileSize + (tileSize - 12));
@@ -493,7 +388,7 @@ const Tiles = [
             [' ', '@', '@', '@', ' '],
             [' ', '@', '@', '@', ' '],
             [' ', ' ', ' ', ' ', ' ']],
-        probability: 0.1
+        probability: 0.05
     },
     {
         image: [
@@ -510,6 +405,7 @@ const Tiles = [
             ['#', '#', '#', ' ', ' '],
             [' ', ' ', ' ', ' ', ' '],
             [' ', ' ', ' ', ' ', ' ']],
+        probability: 1.5
     },
     {
         image: [
@@ -518,6 +414,7 @@ const Tiles = [
             ['#', '#', '#', '#', '#'],
             [' ', ' ', ' ', ' ', ' '],
             [' ', ' ', ' ', ' ', ' ']],
+        probability: 1.5
     },
     {
         image: [
@@ -526,7 +423,7 @@ const Tiles = [
             ['#', '#', '#', '#', '#'],
             [' ', ' ', ' ', ' ', ' '],
             [' ', ' ', ' ', ' ', ' ']],
-        probability: 0.1
+        probability: 1
     },
     {
         image: [
@@ -535,7 +432,7 @@ const Tiles = [
             ['#', '#', '#', '#', '#'],
             [' ', ' ', '#', ' ', ' '],
             [' ', ' ', '#', ' ', ' ']],
-        probability: 0.5
+        probability: 1
     },
     {
         image: [
@@ -578,14 +475,15 @@ const Tiles = [
             ['@', '@', '@', '@', '@']],
     },
     /* sea tiles */
-    /*
+    
     {
         image: [
             ['~', '~', '~', '~', '~'],
             ['~', '~', '~', '~', '~'],
             ['~', '~', '~', '~', '~'],
             ['~', '~', '~', '~', '~'],
-            ['~', '~', '~', '~', '~']]
+            ['~', '~', '~', '~', '~']],
+            probability: 1
     },
     {
         image: [
@@ -620,9 +518,9 @@ const Tiles = [
             ['~', '~', '~', '~', '~']],
         probability: 0.2
     },
-    */
+    
    /* river tiles */
-   /*
+   
     {
         image: [
             [' ', ' ', ' ', ' ', ' '],
@@ -630,7 +528,7 @@ const Tiles = [
             ['~', '~', '~', '~', '~'],
             ['~', '~', '~', '~', '~'],
             [' ', ' ', ' ', ' ', ' ']],
-        probability: 0.8
+        probability: 0.4
     },
     {
         image: [
@@ -639,7 +537,7 @@ const Tiles = [
             ['~', '~', '~', '~', ' '],
             ['~', '~', '~', ' ', ' '],
             [' ', ' ', ' ', ' ', ' ']],
-        probability: 0.8
+        probability: 0.4
     },
     {
         image: [
@@ -677,5 +575,49 @@ const Tiles = [
             [' ', ' ', ' ', '@', '@']],
         probability: 0.1
     },
-    */
+    {
+        image: [
+            [' ', ' ', 'X', ' ', ' '],
+            [' ', ' ', 'X', ' ', ' '],
+            [' ', ' ', 'X', ' ', ' '],
+            [' ', ' ', 'X', ' ', ' '],
+            [' ', ' ', 'X', ' ', ' ']],
+        probability: 0.5
+    },
+    {
+        image: [
+            [' ', ' ', 'X', ' ', ' '],
+            [' ', ' ', 'X', ' ', ' '],
+            ['#', '#', '@', '#', '#'],
+            [' ', ' ', 'X', ' ', ' '],
+            [' ', ' ', 'X', ' ', ' ']],
+        probability: 0.5
+    },
+    {
+        image: [
+            [' ', ' ', 'X', ' ', ' '],
+            [' ', ' ', ' ', 'X', ' '],
+            [' ', ' ', ' ', ' ', 'X'],
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' ']],
+        probability: 1
+    },
+    {
+        image: [
+            [' ', ' ', 'X', ' ', ' '],
+            [' ', '@', '@', '@', ' '],
+            [' ', '@', '@', '@', ' '],
+            [' ', '@', '@', '@', ' '],
+            [' ', ' ', ' ', ' ', ' ']],
+        probability: 0.00001
+    },
+    {
+        image: [
+            [' ', ' ', ' ', ' ', ' '],
+            [' ', ' ', 'X', ' ', ' '],
+            [' ', 'X', '@', 'X', ' '],
+            [' ', ' ', 'X', ' ', ' '],
+            [' ', ' ', ' ', ' ', ' ']],
+        probability: 0.000001
+    },
 ];
