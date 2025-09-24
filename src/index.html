@@ -44,6 +44,7 @@
     <script type="application/javascript" src="tiles.js"></script>
     <script type="application/javascript" src="wavemap.js"></script>
     <script type="module" src="random.js"></script>
-    <script type="application/javascript" src="main.js"></script>
+        <!-- main loads logic as ES modules; tiles.js remains a plain script to provide Tiles/Colors globals for now -->
+        <script type="module" src="main.js"></script>
 </body>
 </html>
