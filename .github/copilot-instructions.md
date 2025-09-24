@@ -46,4 +46,12 @@ All implementation specifics, algorithms, and testing mechanics: `./copilot-tech
 [ ] Deterministic behavior unchanged for identical seed unless explicitly stated
 [ ] Technical file updated if underlying mechanics changed
 
-End.
+## Unit Testing (Mocha Minimal Layer)
+Mocha is added strictly for logic validation (no build chain). Keep tests focused, fast, deterministic.
+– Location: `test/*.spec.js`.
+– Command: `npm test` (runs plain `mocha`).
+– Import pattern: use CommonJS `require('../src/<file>.js')`; do not expose additional symbols by attaching them to `window` but rather propose to upgrade to exporting via module exports when needed (mirror style of `random.spec.js`).
+– Determinism: assert exact numeric outputs for seeded RNG & algorithm steps; update expectations only when intentional logic change.
+– Scope: RNG reproducibility, tile generation (rotation/flip dedupe counts), probability normalization, propagation correctness on tiny grids, height filtering (tiles excluded outside bounds).
+– Keep browser global behavior intact: do not mutate production globals in ways that break `index.html` usage.
+If test complexity grows, move expanded details into `copilot-technical.md` but keep this summary stable.

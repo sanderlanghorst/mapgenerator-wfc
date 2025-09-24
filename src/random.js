@@ -6,6 +6,7 @@
  */
 function MurmurHash3(string) {
     let i = 0;
+    let hash;
     for (i, hash = 1779033703 ^ string.length; i < string.length; i++) {
         let bitwise_xor_from_character = hash ^ string.charCodeAt(i);
         hash = Math.imul(bitwise_xor_from_character, 3432918353);
@@ -54,4 +55,14 @@ class Random {
         this.c = this.c + cast32 | 0;
         return (cast32 >>> 0) / 4294967296;
     }
+}
+
+// Expose globally for existing browser usage
+if (typeof window !== 'undefined') {
+    window.Random = Random;
+}
+
+// CommonJS export for Mocha tests
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports.Random = Random;
 }
