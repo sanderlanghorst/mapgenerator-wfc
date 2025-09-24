@@ -90,18 +90,18 @@ function PropagateProbabilities(x, y) {
  * @returns {Boolean} Returns true if the probabilities were updated, false otherwise.
  */
 function UpdateProbabilities(x, y) {
-    const thisMap = this.tiles[x][y];
+    const thisMap = this.wave[x][y];
     if (thisMap.size == 1 && thisMap.values().next().value == 1) return false;
     const neighbors = [
-        this.tiles[x]?.[y - 1], // Top
-        this.tiles[x + 1]?.[y], // Right
-        this.tiles[x]?.[y + 1], // Bottom
-        this.tiles[x - 1]?.[y] // Left
+        this.wave[x]?.[y - 1], // Top
+        this.wave[x + 1]?.[y], // Right
+        this.wave[x]?.[y + 1], // Bottom
+        this.wave[x - 1]?.[y] // Left
     ];
     const mappedNeighbors = neighbors
         .map((n, i) => ({ m: n, dir: Opposites[Directions[i]] }))
         .filter(n => n?.m !== undefined);
-
+    const height = this.heightmap[x][y];
     const s = JSON.stringify(Array.from(thisMap));
     /** @type {Map<Number,CalculatedChance>} */
     const neighborChances = new Map();
@@ -112,6 +112,10 @@ function UpdateProbabilities(x, y) {
             const chances = this.chances.get(n)[dir];
             for (const [cTileId, chance] of chances) {
                 let tileChance = subChances.get(cTileId) || { number: 0, totalChance: 0 };
+                const tile = this.tiles.get(cTileId);
+                if (tile.minHeight > height || tile.maxHeight < height) {
+                    continue; // Skip tiles that do not match the height criteria
+                }
                 tileChance.number++;
                 tileChance.totalChance += chance;
                 subChances.set(cTileId, tileChance);
@@ -164,9 +168,10 @@ class WaveMap {
      * 
      * @param {Number} rows 
      * @param {Number} cols 
+     * @param {Map<Number,Tile>} tiles
      * @param {Map<Number,TileChance>} chances 
      */
-    constructor(rows, cols, chances, random) {
+    constructor(rows, cols, tiles, chances, heightmap, random) {
         /**@type {Number} */
         this.rows = rows;
         /**@type {Number} */
@@ -174,14 +179,20 @@ class WaveMap {
         /**@type {Map<Number,TileChance>} */
         this.chances = chances;
 
+        /**@type {Array<Array<Number>>} */
+        this.heightmap = heightmap;
+
         /**@type {Random} */
         this.random = random;
+        /**@type {Map<Number,Tile>} */
+        this.tiles = tiles;
+
         /**
          * A 2D array representing the tiles in the map.
          * Each tile is a Map where keys are tile IDs and values are their probabilities.
          * @type {Array<Array<Map<Number,Number>>>}
          */
-        this.tiles = Array.from({ length: cols }, () =>
+        this.wave = Array.from({ length: cols }, () =>
             Array.from({ length: rows }, () => new Map())
         );
         // Initialize the tiles with all chances set to 1
@@ -189,8 +200,16 @@ class WaveMap {
         for (let x = 0; x < cols; x++) {
             for (let y = 0; y < rows; y++) {
                 for (const [tileId, _] of chances) {
-                    this.tiles[x][y].set(tileId, 1 / numberOfChances);
+                    const tile = this.tiles.get(tileId);
+                    const height = this.heightmap[x][y];
+                    if (tile.minHeight > height || tile.maxHeight < height) {
+                        this.wave[x][y].set(tileId, 0);
+                    }
+                    else {
+                        this.wave[x][y].set(tileId, 1);
+                    }
                 }
+                Normalize.call(this, this.wave[x][y]);
             }
         }
     }
@@ -202,7 +221,7 @@ class WaveMap {
         if (!this.chances.has(tileId)) {
             throw new Error(`Tile ID ${tileId} does not exist in chances.`);
         }
-        this.tiles[x][y] = new Map([[tileId, 1]]);
+        this.wave[x][y] = new Map([[tileId, 1]]);
         PropagateProbabilities.call(this, x, y);
     }
 
@@ -216,7 +235,7 @@ class WaveMap {
         if (x < 0 || x >= this.cols || y < 0 || y >= this.rows) {
             throw new Error(`Coordinates (${x}, ${y}) are out of bounds.`);
         }
-        return this.tiles[x][y];
+        return this.wave[x][y];
     }
 
     /**
@@ -225,12 +244,12 @@ class WaveMap {
      */
     GetMostCertain() {
         let least = { x, y, size: Number.MAX_SAFE_INTEGER };
-        for (let x = 0; x < this.tiles.length; x++) {
-            for (let y = 0; y < this.tiles[x].length; y++) {
-                if(this.tiles[x][y].size == 1 && this.tiles[x][y].values().next().value == 1) continue;
-                if (this.tiles[x][y].size > 1 &&
-                    least.size > this.tiles[x][y].size) {
-                    least.size = this.tiles[x][y].size;
+        for (let x = 0; x < this.wave.length; x++) {
+            for (let y = 0; y < this.wave[x].length; y++) {
+                if(this.wave[x][y].size == 1 && this.wave[x][y].values().next().value == 1) continue;
+                if (this.wave[x][y].size > 1 &&
+                    least.size > this.wave[x][y].size) {
+                    least.size = this.wave[x][y].size;
                     least.x = x;
                     least.y = y;
                 }
@@ -249,7 +268,7 @@ class WaveMap {
         if (x < 0 || x >= this.cols || y < 0 || y >= this.rows) {
             throw new Error(`Coordinates (${x}, ${y}) are out of bounds.`);
         }
-        if (!this.tiles[x][y].size > 1) {
+        if (!this.wave[x][y].size > 1) {
             throw new Error(`Tile ID ${tileId} does not exist in chances.`);
         }
         const chances = this.GetChances(x, y);
@@ -258,7 +277,7 @@ class WaveMap {
             Array.from(chances.keys()),
             Array.from(chances.values()),
         0.8 + this.random.Next()* 0.4);
-        this.tiles[x][y] = new Map([[chosen, 1]]);
+        this.wave[x][y] = new Map([[chosen, 1]]);
         PropagateProbabilities.call(this, x, y);
     }
 }

@@ -1,19 +1,25 @@
 const Directions = ['top', 'right', 'bottom', 'left'];
 const Opposites = { top: 'bottom', right: 'left', bottom: 'top', left: 'right' };
-const Colors = {
-    ' ': '#1ea54c', // Grass / green
-    '#': '#968a81', // Path / brown
-    '@': '#1f1f1f', // Wall / black
-    '~': '#1799ea', // water / blue
-    'X': '#764463', // Red tile
-    'default': '#ccc' // Default color for undefined tiles
-}
+
 const DEBUG = false;
 
 // Tile and canvas size parameters
-    const tileSize = 40; // Size of each tile in pixels
-    const mapCols = 50;
-    const mapRows = 25;
+/**
+ * number of pixels per tile
+ */
+const tileSize = 20; // Size of each tile in pixels
+/**
+ * Width
+ */
+const mapCols = 20;
+/**
+ * Height
+ */
+const mapRows = 14;
+/**
+ * Number of iterations per step
+ */
+const stepSize = 4;
 
 let random;
 
@@ -29,9 +35,15 @@ let random;
  * @property {number} mapRows - Number of rows in the map.
  * 
  * @typedef {Object} Tile
+ * @property {string} [name] - Optional name of the tile.
  * @property {Array<Array<string>>} image - 2D array representing the tile's image.
- * @property {Object} [constraint] - Optional constraint for the tile.
- * @property {Number} probability - Probability of the tile being selected (default is 1).
+ * @property {Constraint} [constraint] - Optional constraint for the tile.
+ * @property {Number} [probability] - Probability of the tile being selected (default is 1).
+ * @property {Number} [minHeight] - Minimum height of the tile (default is 0).
+ * @property {Number} [maxHeight] - Maximum height of the tile (default is 1).
+ * 
+ * @typedef {Object} Constraint
+ * @property {string} forbid - The name of tile that is forbidden to be placed next to this tile.
  * 
  * @typedef {Object} TileChance
  * @property {Map<Number,Number>} top - Chances for the top direction.
@@ -71,18 +83,25 @@ window.onload = function () {
     playButton.addEventListener('click', () => { Loop(); });
     const stopButton = document.getElementById('stop');
     stopButton.addEventListener('click', () => { Stop(); });
-
     const speedSlider = document.getElementById('speedSlider');
+    const completeButton = document.getElementById('complete');
+    completeButton.addEventListener('click', () => {
+        for (let i = 0; i < (mapRows * mapCols) / stepSize; i++) {
+            Iterate(context);
+        }
+        Draw(context);
+    });
 
     /**@type {Context} */
     const context = {
         tiles: new Map(),
-        tileMap: [],
+        tileMap: undefined,
         Chances: new Map(),
         canvas: ctx,
         tileSize: tileSize,
         mapCols: mapCols,
-        mapRows: mapRows
+        mapRows: mapRows,
+        heightmap: []
     };
     let iterations = 0;
 
@@ -94,10 +113,9 @@ window.onload = function () {
         iterations = (mapCols * mapRows) / 4;
         const seed = document.getElementById('seed').value;
         random = new Random(seed);
+        
         Set([
-            { x: centerX, y: centerY, tile: 0 },
-            //{x:1,y:0,tile:3},
-            //{x:0,y:1,tile:36},
+            { x: centerX, y: centerY, tile: undefined }
         ]);
 
     }
@@ -170,11 +188,14 @@ window.onload = function () {
 
 
     function Set(initialState) {
-        context.tileMap = new WaveMap(context.mapRows, context.mapCols, context.Chances, random);
-        context.canvas.clearRect(0, 0, canvasWidth, canvasHeight);
-
+        const heightmap = generateHeightmap(context.mapCols, context.mapRows, random);
+        context.tileMap = new WaveMap(context.mapRows, context.mapCols, context.tiles, context.Chances, heightmap, random);
+        
         for ({ x, y, tile } of initialState || []) {
-            context.tileMap.Fix(x,y,tile);
+            if(context.tiles.has(tile))
+                context.tileMap.Fix(x,y,tile);
+            else
+                context.tileMap.Pick(x,y);
         }
 
         Draw(context);
@@ -232,11 +253,17 @@ function GenerateTiles(tiles) {
                 newImage[i][j] = tile.image[tile.image.length - j - 1][i];
             }
         }
-        return { image: newImage, constraint: tile.constraint, probability: ('probability' in tile ? tile.probability : 1) };
+        return { image: newImage, constraint: tile.constraint, 
+            probability: ('probability' in tile ? tile.probability : 1),
+            minHeight: ('minHeight' in tile ? tile.minHeight : 0),
+            maxHeight: ('maxHeight' in tile ? tile.maxHeight : 1) };
     }
     function Flip(tile) {
         const newImage = tile.image.map(row => row.slice().reverse());
-        return { image: newImage, constraint: tile.constraint, probability: ('probability' in tile ? tile.probability : 1) };
+        return { image: newImage, constraint: tile.constraint, 
+            probability: ('probability' in tile ? tile.probability : 1),
+            minHeight: ('minHeight' in tile ? tile.minHeight : 0),
+            maxHeight: ('maxHeight' in tile ? tile.maxHeight : 1) };
     }
 }
 
@@ -299,7 +326,7 @@ function GenerateChancesFromTiles(tiles) {
  * @param {Context} context 
  */
 function Iterate(context) {
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < stepSize; i++) {
         const coords = context.tileMap.GetMostCertain();
         if(coords?.size > 0){
             context.tileMap.Pick(coords.x, coords.y);
@@ -326,6 +353,14 @@ function Draw(context) {
                 DrawTile(context.canvas, tile, x, y, context.tileSize, t[i][1]);
             }
         }
+    }
+    if (DEBUG) {
+        for (let x = 0; x < context.mapCols; x++) {
+        for (let y = 0; y < context.mapRows; y++) {
+            const height = context.tileMap.heightmap[x][y];
+            context.canvas.fillStyle = `rgba(0, 0, 0, 0.75)`;
+            context.canvas.fillRect((x+1) * context.tileSize - 4, y * context.tileSize, 4, context.tileSize*height);
+        }}
     }
 }
 
@@ -369,4 +404,80 @@ function DrawTile(canvas, tile, x, y, tileSize, opacity = 1) {
             canvas.fillText(JSON.stringify(tile.constraint), x * tileSize + 2, y * tileSize + (tileSize - 12));
         }
     }
+}
+
+/**
+ * 
+ * @param {Number} width 
+ * @param {Number} height 
+ * @param {Random} randomGenerator 
+ * @param {Number} layers 
+ * @param {Number} minDepth 
+ * @param {Number} maxDepth 
+ * @returns {Array<Array<Number>>} A 2D array representing the heightmap
+ */
+function generateHeightmap(width, height, randomGenerator, layers = 4, minDepth = 0, maxDepth = 1) {
+    const baseWidth = width * Math.pow(2, layers);
+    const baseHeight = height * Math.pow(2, layers);
+    const baseMap = Array.from({ length: baseWidth }, () => Array(baseHeight).fill(0));
+    const heightmap = Array.from({ length: width }, () => Array.from({ length: height }, () => 0));
+    for (let x = 0; x < baseWidth; x++) {
+        for (let y = 0; y < baseHeight; y++) {
+            baseMap[x][y] += randomGenerator.Next();
+        }
+    }
+
+    function noise(x,y){
+        return baseMap[Math.floor(x) % (baseWidth)][Math.floor(y) % (baseHeight)];
+    }
+
+    for(let layer = 0; layer < layers; layer++){
+        
+        for (let x = 0; x < width; x++) {
+            for (let y = 0; y < height; y++) {
+                const scale = Math.pow(2, layer);
+                const nx = x / scale;
+                const ny = y / scale;
+                
+                const v1 = lerp(noise(nx,ny), noise(nx+1, ny), nx-Math.floor(nx));
+                const v2 = lerp(noise(nx,ny+1), noise(nx+1, ny+1), nx-Math.floor(nx));
+                
+                heightmap[x][y] += scale*lerp(v1, v2, ny-Math.floor(ny));
+            }
+        }
+    }
+
+    // Normalize the heightmap to the given minHeight and maxHeight
+    const maxPossibleValue = heightmap.reduce((a, b) => Math.max(a, b.reduce((aa,bb) => Math.max(aa,bb), 0)), 0);
+    const minPossibleValue = 0;
+
+    const exegeration = (random.Next() * 4) + 0.5;
+    for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+            heightmap[x][y] = ((heightmap[x][y] - minPossibleValue) / (maxPossibleValue - minPossibleValue)) * (maxDepth - minDepth) + minDepth;
+            heightmap[x][y] = Math.pow(heightmap[x][y], exegeration);
+        }
+    }
+
+    return heightmap;
+}
+
+/**
+ * Linear interpolation between a and b by t (0 <= t <= 1)
+ * @param {number} a 
+ * @param {number} b 
+ * @param {number} t 
+ * @returns {number}
+ */
+function lerp(a, b, t) {
+    return a + (b - a) * t;
+}
+
+/**
+ * SmoothStep function for smooth interpolation
+ * @param {number} n - Input value between 0 and 1
+ * @returns {number} - Smoothed value
+ */
+function SmoothStep(n){
+    return 6 * Math.pow(n, 5) - 15 * Math.pow(n, 4) + 10 * Math.pow(n, 3);
 }
