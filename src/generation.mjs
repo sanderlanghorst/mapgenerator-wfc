@@ -2,6 +2,7 @@ import { Directions, Opposites } from './constants.mjs';
 
 export function GenerateTiles(tiles) {
     const allTiles = [];
+    const seen = new Set();
     for (let i = 0; i < tiles.length; i++) {
         const extraTiles = [];
         let tile = tiles[i];
@@ -9,12 +10,10 @@ export function GenerateTiles(tiles) {
         for (let j = 0; j < 3; j++) { tile = Rotate(tile); extraTiles.push(tile); }
         const length = extraTiles.length;
         for (let j = 0; j < length; j++) { tile = Flip(extraTiles[j]); extraTiles.push(tile); }
-        const seen = new Set(); const uniqueTiles = [];
-        for (const tile of extraTiles) {
-            const key = tile.image.map(row => row.join('')).join('|');
-            if (!seen.has(key)) { seen.add(key); uniqueTiles.push(tile); }
+        for (const t of extraTiles) {
+            const key = t.image.map(row => row.join('')).join('|');
+            if (!seen.has(key)) { seen.add(key); allTiles.push(t); }
         }
-        allTiles.push(...uniqueTiles);
     }
     const map = new Map();
     for (let i = 0; i < allTiles.length; i++) { allTiles[i].id = i; map.set(i, allTiles[i]); }

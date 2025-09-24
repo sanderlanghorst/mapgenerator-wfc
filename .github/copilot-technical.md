@@ -3,8 +3,8 @@
 This file holds concrete implementation details so the high‑level `copilot-instructions.md` can stay short. Keep this updated when core behavior changes.
 
 ## Script Load Order (Current)
-`tiles.js` → `wavemap.js` → `random.js` → `main.js`
-If adding files, insert before `main.js` unless purely UI. Any logic consumed by `wavemap.js` must load earlier.
+`tiles.mjs` → `main.js` (module). Logic modules are ESM and imported by `main.js` (e.g. `random.mjs`, `wavemap.mjs`, `generation.mjs`).
+Legacy non-module scripts have been archived to `src/legacy/`. Prefer adding new logic as ESM modules and importing them in `main.js`.
 
 ## Data Structures
 - Tile: `{ id, image[5][5], probability (0<), minHeight, maxHeight, constraint? }` (id assigned after rotation/flip expansion).
@@ -51,33 +51,18 @@ Normalization: after recompute, each cell probability map is divided by sum (if 
 ## Debug Mode
 Set `DEBUG=true` in `main.js` to draw: borders, coordinates, tile id, probability %, constraint JSON, and height bars (right edge). Also a large debug adjacency canvas lists all tiles and directional compatibilities.
 
-## Planned Unit Testing Approach (Browser‑Only Phase)
-Add a `tests/` folder & `tests.html` that loads all production scripts first, then test scripts.
+## Unit Testing Approach
+Primary runner: Mocha with tests at `test/*.spec.js` (CommonJS entry) that dynamically import ESM modules.
 
 Example structure:
 ```
-/tests
-  tests.html            # <script src="../src/.."> then each test file; writes results to DOM
-  rng.test.js           # RNG reproducibility
-  tiles.test.js         # rotation/flip count & dedupe
-  propagation.test.js   # deterministic collapse for fixed seed & tiny map
-  heightmap.test.js     # range & monotonic normalization
+/test
+  wavemap.spec.js        # uses dynamic import('../src/*.mjs')
+  wavemap.propagation.spec.js
+  wavemap.pick.spec.js
 ```
 
-### Minimal Test Harness Pattern
-```
-(function(){
-  const results = [];
-  function assert(name, cond){ results.push({name, pass: !!cond}); }
-  // Example
-  const r1 = new Random('seed');
-  const seq = Array.from({length:5}, ()=>r1.Next());
-  const r2 = new Random('seed');
-  assert('RNG deterministic', seq.every(v=>v===r2.Next()));
-  window.__testResults = (window.__testResults||[]).concat(results);
-})();
-```
-A final reporter script aggregates `window.__testResults` and renders HTML summary.
+This approach avoids changing production code for tests and keeps them deterministic. If you later standardize on ESM tests, update `package.json` test runner accordingly.
 
 ## Adding Tests Safely
 - Never mutate production globals inside tests except via existing public APIs.

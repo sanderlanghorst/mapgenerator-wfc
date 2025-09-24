@@ -1,16 +1,16 @@
 # AI Coding Agent Instructions (High‑Level Development Guidelines)
 
-Purpose: Keep this project a lightweight, browser‑only ES6 (no build) Wave Function Collapse playground while it evolves. Technical mechanics live in `./copilot-technical.md`; keep this file short and principle focused.
+Purpose: Keep this project a lightweight, browser‑first ES6 (no build) Wave Function Collapse playground while it evolves. Technical mechanics live in `./copilot-technical.md`; keep this file short and principle focused.
 
 ## Project Intent
 Interactive visual sandbox for experimenting with WFC‑style constrained tile collapse plus a heightmap filter. Fast iteration > architecture. Determinism (seed) and transparency (readable source) are core values.
 
 ## Non‑Negotiable Constraints
-1. Browser only: plain `<script>` tags; no bundler / transpile / package manager by default.
+1. Browser only: plain `<script>` tags; prefer module scripts (`<script type="module">`) for logic and data. No bundler / transpile / package manager by default unless explicitly justified.
 2. Deterministic core: all algorithmic randomness flows through the custom `Random` instance (no `Math.random()` in core logic).
 3. Script load order matters; if you add new scripts, consciously place them (see technical file).
 4. Tile definitions remain simple 5×5 character grids until a deliberate versioned change.
-5. Keep public globals (`Tiles`, `Colors`, `WaveMap`, `Random`) stable unless doing a coordinated rename.
+5. Prefer explicit ESM exports for logic and data (`Tiles`, `Colors`, `Random`, `WaveMap`) and minimize globals. During migration legacy globals may remain briefly; coordinate any rename.
 
 ## Change Philosophy
 Incremental, observable steps. Prefer adding a small capability + a visual / (future) test harness example over large refactors. Defer abstraction until at least two concrete duplication points appear.
@@ -22,7 +22,9 @@ Incremental, observable steps. Prefer adding a small capability + a visual / (fu
 4. (When tests exist) add / update unit test covering the new rule (see technical file for structure).
 
 ## Testing Direction (Conceptual)
-Introduce an in‑browser test harness (HTML that loads sources then `tests/*.js`). No external runner needed initially. Goals: reproducible RNG, rotation/flip uniqueness, probability normalization, height filtering correctness. Expand only when pain is felt.
+Primary test runner: Mocha (Node). Keep tests small, deterministic, and fast. Use `test/*.spec.js` naming (CommonJS-style entry) that can dynamically import ESM modules when needed.
+
+For quick browser checks you may keep an in‑browser test harness, but core validation should live in Mocha tests that run under `npm test`.
 
 ## Performance & Complexity
 Favor clarity; only micro‑optimize if a visible UI slowdown occurs (e.g., propagation). Any optimization must keep determinism identical for a given seed.
@@ -47,11 +49,11 @@ All implementation specifics, algorithms, and testing mechanics: `./copilot-tech
 [ ] Technical file updated if underlying mechanics changed
 
 ## Unit Testing (Mocha Minimal Layer)
-Mocha is added strictly for logic validation (no build chain). Keep tests focused, fast, deterministic.
+Mocha is used for logic validation (no build chain). Keep tests focused, fast, deterministic.
 – Location: `test/*.spec.js`.
 – Command: `npm test` (runs plain `mocha`).
-– Import pattern: use CommonJS `require('../src/<file>.js')`; do not expose additional symbols by attaching them to `window` but rather propose to upgrade to exporting via module exports when needed (mirror style of `random.spec.js`).
+– Import pattern: tests may be CommonJS but should use dynamic `import('../src/<file>.mjs')` to load ESM modules when needed (this avoids duplicating logic or adding temporary CJS exports).
 – Determinism: assert exact numeric outputs for seeded RNG & algorithm steps; update expectations only when intentional logic change.
 – Scope: RNG reproducibility, tile generation (rotation/flip dedupe counts), probability normalization, propagation correctness on tiny grids, height filtering (tiles excluded outside bounds).
-– Keep browser global behavior intact: do not mutate production globals in ways that break `index.html` usage.
+– Keep browser global behavior intact where required for the demo, but prefer module imports in tests and new code.
 If test complexity grows, move expanded details into `copilot-technical.md` but keep this summary stable.

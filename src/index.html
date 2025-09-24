@@ -41,10 +41,8 @@
     <div id="debugDiv" style="display:none;">
         <canvas id="debugCanvas" width="800" height="600" style="border:1px solid #000; display:block;"></canvas>
     </div>
-    <script type="application/javascript" src="tiles.js"></script>
-    <script type="application/javascript" src="wavemap.js"></script>
-    <script type="module" src="random.js"></script>
-        <!-- main loads logic as ES modules; tiles.js remains a plain script to provide Tiles/Colors globals for now -->
-        <script type="module" src="main.js"></script>
+    <script type="module" src="tiles.mjs"></script>
+    <!-- main loads logic as ES modules; tiles.js remains a plain script to provide Tiles/Colors globals for now -->
+    <script type="module" src="main.js"></script>
 </body>
 </html>

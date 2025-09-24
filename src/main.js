@@ -3,6 +3,7 @@ import { Random } from './random.mjs';
 import { GenerateTiles, GenerateChancesFromTiles } from './generation.mjs';
 import { generateHeightmap } from './heightmap.mjs';
 import { WaveMap } from './wavemap.mjs';
+import { Tiles, Colors } from './tiles.mjs';
 
 const DEBUG = false;
 

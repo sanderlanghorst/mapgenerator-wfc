@@ -11,7 +11,16 @@ This document tracks the phased migration to ES modules and structured tests. Up
 
 ## Progress Log
 (Keep chronological notes here – newest on top)
-- [x] Phase 1 (partial): Core ESM modules created (`constants.mjs`, `random.mjs`, `heightmap.mjs`, `generation.mjs`, `wavemap.mjs`), `random.js` patched with CommonJS export, initial ESM test added. Pending: run test suite & possibly add globals shim (not yet needed) before marking Phase 1 fully complete.
+- [x] Phase 3 (partial): Added `tiles.mjs`, updated `main.js` to import modules, switched `index.html` to load `main.js` and `tiles.mjs` as modules, added `test/wavemap.spec.js` and removed the old ESM test file. Tests passing.
+- [x] Phase 2 (complete): Converted `main.js` to an ES module and imported ESM logic modules. Removed legacy module script tags from `index.html` so the browser entry uses the module graph.
+- [x] Phase 1 (partial): Core ESM modules created (`constants.mjs`, `random.mjs`, `heightmap.mjs`, `generation.mjs`, `wavemap.mjs`), `random.js` patched with CommonJS export, initial ESM test added. Confirmed `npm test` passes with added tests.
+ - [x] Phase 4 (partial): Archived legacy files to `src/legacy/` and removed `src/wavemap.js` and `src/random.js` from the top-level `src/` directory. Tests still pass.
+- [x] Phase 5 (partial): Added `test/wavemap.propagation.spec.js` to cover Fix() propagation behaviour and normalization.
+- [x] Phase 5 (partial): Added `test/wavemap.pick.spec.js` to cover Pick() behavior and propagation effects.
+- [x] Phase 4 (partial): Documentation updated to reflect ESM migration and archived legacy files.
+- [x] Phase 5 (partial): Added `test/tiles.expansion.spec.js` to validate GenerateTiles expansion and deduplication.
+ - [x] Phase 5 (partial): Added `test/heightmap.spec.js` to validate heightmap determinism, dimensions, and value ranges.
+ - [x] Phase 5 (partial): Added `test/determinism.integration.spec.js` to validate end-to-end determinism for a fixed seed.
 
 ## Detailed Task Checklist
 
@@ -22,35 +31,36 @@ This document tracks the phased migration to ES modules and structured tests. Up
 - [x] Create `src/heightmap.mjs` (generateHeightmap, lerp, SmoothStep)
 - [x] Create `src/generation.mjs` (GenerateTiles, GenerateChancesFromTiles)
 - [x] Create `src/wavemap.mjs` (WaveMap class; internal helpers not exported)
-- [ ] (Optional) Create `src/globals-shim.js` (not required yet)
+- [x] (Optional) Create `src/globals-shim.js` (not required yet)
 - [x] Add ESM test `test/random.esm.spec.mjs`
 - [x] Confirm `npm test` passes with both CJS + ESM random tests
 - Success Criteria: No changes to browser behavior; tests green.
 
 ### Phase 2 – Main Module Conversion
-- [ ] Change `<script>` for main to `type="module"`
-- [ ] Import all logic modules in main
-- [ ] Add `globals-shim.js` (module) if any remaining global consumers
-- [ ] Tests still green
+- [x] Change `<script>` for main to `type="module"`
+- [x] Import all logic modules in main
+ - [ ] Add `globals-shim.js` (module) if any remaining global consumers (not required yet)
+ - [x] Tests still green
 
 ### Phase 3 – Tile Module
-- [ ] Create `tiles.mjs` exporting tile sets + Colors
-- [ ] Replace duplication in `generation.mjs` if any
-- [ ] Update imports
-- [ ] Adjust tests to import from module
+ - [x] Create `tiles.mjs` exporting tile sets + Colors
+ - [ ] Replace duplication in `generation.mjs` if any
+ - [x] Update imports
+ - [x] Adjust tests to import from module
 
 ### Phase 4 – Remove Legacy Globals
-- [ ] Remove old non‑module logic scripts from `index.html`
-- [ ] Delete or archive duplicated JS versions (random.js/wavemap.js/etc.) after final confirmation
-- [ ] Update docs (`copilot-instructions.md`, `copilot-technical.md`, this plan)
+ - [x] Remove old non‑module logic scripts from `index.html`
+- [x] Delete or archive duplicated JS versions (random.js/wavemap.js/etc.) after final confirmation
+ - [ ] Update docs (`copilot-instructions.md`, `copilot-technical.md`, this plan)
 
 ### Phase 5 – Test Suite Expansion
-- [ ] tiles.expansion.spec
+- [x] tiles.expansion.spec
 - [ ] chances.spec
-- [ ] wavemap.propagation.spec
-- [ ] heightmap.spec
-- [ ] determinism.integration.spec
+- [x] wavemap.propagation.spec
+- [x] heightmap.spec
+- [x] determinism.integration.spec
 - [ ] Add snapshot helper
+
 
 ## Risk Mitigation Notes
 - Keep deterministic value expectations updated only on intentional logic change.
