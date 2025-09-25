@@ -68,6 +68,24 @@ This approach avoids changing production code for tests and keeps them determini
 - Never mutate production globals inside tests except via existing public APIs.
 - For grid tests, temporarily reduce `mapCols/mapRows` through a helper or separate lightweight harness file rather than editing `main.js` directly.
 
+## CI / Snapshot Details
+- Workflow: We added `.github/workflows/ci.yml` which runs `npm install` and `npm test` on pushes and PRs to `main`.
+- Snapshot fixtures: stored in `test/fixtures/` and generated with `scripts/generate_snapshot.mjs`.
+- Regeneration policy: if a test intentionally changes algorithmic output, run the generator script locally, visually inspect the fixture, then commit the updated fixture with a message like `TEST(SNAPSHOT): regen`.
+
+## Local commands (developer quick reference)
+- Run tests:
+```
+npm test
+```
+- Regenerate snapshot fixture:
+```
+node ./scripts/generate_snapshot.mjs
+```
+
+## CI performance notes
+- Keep integration grids small (6×6 used by tests) to keep CI fast; heavy visual tests should be optional and run in a separate job if needed.
+
 ## Extensibility Hooks
 Potential safe new files (place before `main.js`):
 - `exporter.js` → `ExportJSON(wave, tiles)` returning collapsed tile ids.

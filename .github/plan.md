@@ -18,9 +18,12 @@ This document tracks the phased migration to ES modules and structured tests. Up
 - [x] Phase 5 (partial): Added `test/wavemap.propagation.spec.js` to cover Fix() propagation behaviour and normalization.
 - [x] Phase 5 (partial): Added `test/wavemap.pick.spec.js` to cover Pick() behavior and propagation effects.
 - [x] Phase 4 (partial): Documentation updated to reflect ESM migration and archived legacy files.
+ - [x] Phase 4 (partial): Documentation updated to reflect ESM migration and archived legacy files.
+ - [x] Phase 4 (complete): `copilot-instructions.md` and `copilot-technical.md` updated to reflect final migration and testing workflow.
 - [x] Phase 5 (partial): Added `test/tiles.expansion.spec.js` to validate GenerateTiles expansion and deduplication.
  - [x] Phase 5 (partial): Added `test/heightmap.spec.js` to validate heightmap determinism, dimensions, and value ranges.
  - [x] Phase 5 (partial): Added `test/determinism.integration.spec.js` to validate end-to-end determinism for a fixed seed.
+ - [x] Phase 5 (partial): Added snapshot helper and fixture (`scripts/generate_snapshot.mjs`, `test/fixtures/integration-snapshot.json`) and `test/snapshot.spec.js` to detect regressions.
 
 ## Detailed Task Checklist
 
@@ -60,6 +63,7 @@ This document tracks the phased migration to ES modules and structured tests. Up
 - [x] heightmap.spec
 - [x] determinism.integration.spec
 - [ ] Add snapshot helper
+
 
 
 ## Risk Mitigation Notes

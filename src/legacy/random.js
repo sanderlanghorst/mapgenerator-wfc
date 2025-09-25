@@ -1,10 +1,9 @@
 /**
- * Archived copy of random.js (kept for history during migration)
+ * murmurhash3 function to generate a seed based on a string
+ * @param {string} string the seed string to hash
+ * @returns {Function} a method that hashes string
+ * @memberof Random
  */
-/*
-Contents moved from src/random.js
-*/
-// murmurhash and SFC32 RNG (archived)
 function MurmurHash3(string) {
     let i = 0;
     let hash;
@@ -14,13 +13,21 @@ function MurmurHash3(string) {
         hash = hash << 13 | hash >>> 19;
     }
     return () => {
+        // Return the hash that you can use as a seed
         hash = Math.imul(hash ^ (hash >>> 16), 2246822507);
         hash = Math.imul(hash ^ (hash >>> 13), 3266489909);
         return (hash ^= hash >>> 16) >>> 0;
     }
 }
 
+/**
+ * Random number generator class using SFC32 algorithm
+ */
 class Random {
+    /**
+     * 
+     * @param {Number} seed The seed for the random number generator
+     */
     constructor(seed) {
         this.seed = seed;
         this.genSeed = MurmurHash3(seed);
@@ -29,6 +36,11 @@ class Random {
         this.c = this.genSeed();
         this.d = this.genSeed();
     }
+
+    /**
+     * gets the next SFC32 random number
+     * @returns {Number} A random number between 0 and 1
+     */
     Next() {
         this.a >>>= 0;
         this.b >>>= 0;
@@ -45,4 +57,12 @@ class Random {
     }
 }
 
-// Archived for reference; not loaded by index.html
+// Expose globally for existing browser usage
+if (typeof window !== 'undefined') {
+    window.Random = Random;
+}
+
+// CommonJS export for Mocha tests
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports.Random = Random;
+}

@@ -57,3 +57,21 @@ Mocha is used for logic validation (no build chain). Keep tests focused, fast, d
 – Scope: RNG reproducibility, tile generation (rotation/flip dedupe counts), probability normalization, propagation correctness on tiny grids, height filtering (tiles excluded outside bounds).
 – Keep browser global behavior intact where required for the demo, but prefer module imports in tests and new code.
 If test complexity grows, move expanded details into `copilot-technical.md` but keep this summary stable.
+
+## CI and Snapshot Guidance
+- Add a lightweight CI workflow that runs `npm test` on pushes and PRs (we keep a GitHub Actions example at `.github/workflows/ci.yml`).
+- Snapshot tests are allowed for visual/layout regression detection. Keep fixtures under `test/fixtures/` and provide a generator script (we use `scripts/generate_snapshot.mjs`) to re-generate golden fixtures when changes are intentional.
+- When updating a snapshot, commit both the generator change (if any) and the updated fixture; annotate the commit message with `TEST(SNAPSHOT): regen`.
+- CI runs will run these commands; keep test runtime small (we aim for < 1s per test file on CI by keeping grids small).
+
+## Quick commands
+Run the full deterministic test suite locally:
+```powershell
+npm test
+```
+
+Regenerate the snapshot fixture used by tests:
+```powershell
+node .\scripts\generate_snapshot.mjs
+```
+
