@@ -24,14 +24,15 @@ describe('generation.chances (cjs)', function () {
       }
     }
 
-    // constraint.forbid rule: find a tile with a forbid constraint (if present) and ensure it forbids itself
+    // constraint.forbid rule: a tile carrying a forbid key must not have any
+    // positive adjacency chance with another tile sharing that key.
     let forbId = null;
     for (const [id, t] of tiles) if (t.constraint && t.constraint.forbid) { forbId = id; break; }
     if (forbId !== null) {
       const tChance = chances.get(forbId);
       for (const dir of Directions) {
         const val = tChance[dir].get(forbId);
-        assert.strictEqual(val, 0, 'constraint.forbid did not set self-chance to 0');
+        assert.ok(!val, `forbid pair self->${dir} must not have a positive chance (got ${val})`);
       }
     }
 
@@ -100,9 +101,9 @@ describe('generation.chances (cjs)', function () {
           const hasEntry = chanceObj.has(otid);
           if (edgeA === edgeB) {
             if (tile.constraint && tile.constraint.forbid && tile.constraint.forbid === oTile.constraint?.forbid) {
-              // forbidden: entry exists and equals 0
-              assert.ok(hasEntry, `expected forbidden entry for ${tid}->${otid} ${dir}`);
-              assert.strictEqual(chanceObj.get(otid), 0);
+              // forbid pair: must not be present with positive chance
+              const val = chanceObj.get(otid);
+              assert.ok(!val, `forbid pair ${tid}->${otid} ${dir} must not have positive chance (got ${val})`);
             } else {
               // should be present with normalized probability
               assert.ok(hasEntry, `expected entry for ${tid}->${otid} ${dir}`);
@@ -110,11 +111,8 @@ describe('generation.chances (cjs)', function () {
               assert.strictEqual(val, oTile.probability);
             }
           } else {
-            // if edges don't match, either no entry or entry absent
-            if (hasEntry) {
-              // if entry exists and not matching edges, it should be zero
-              assert.strictEqual(chanceObj.get(otid), 0);
-            }
+            // if edges don't match, no entry should be recorded
+            assert.ok(!hasEntry, `unexpected entry for non-matching edges ${tid}->${otid} ${dir}`);
           }
         }
       }

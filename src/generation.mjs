@@ -53,9 +53,9 @@ export function GenerateChancesFromTiles(tiles) {
                 const edgeB = getEdge(oTile, Opposites[dir]);
                 const chance = chances.get(tid) || {};
                 if (!chance[dir]) { chance[dir] = new Map(); }
-                if (tile.constraint && tile.constraint?.forbid == oTile.constraint?.forbid) {
-                    chance[dir].set(otid, 0);
-                } else if (edgeA === edgeB) {
+                const forbidPair = tile.constraint?.forbid !== undefined
+                    && tile.constraint.forbid === oTile.constraint?.forbid;
+                if (!forbidPair && edgeA === edgeB) {
                     chance[dir].set(otid, ('probability' in oTile ? oTile.probability : 1));
                 }
                 chances.set(tid, chance);
