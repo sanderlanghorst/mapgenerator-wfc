@@ -11,7 +11,7 @@ const DEBUG = false;
 const tileSize = 20; // pixels per tile
 const mapCols = 20;
 const mapRows = 14;
-const stepSize = 4;
+const stepSize = 1;
 
 let random;
 
@@ -49,7 +49,7 @@ window.onload = function () {
     if (completeButton) completeButton.addEventListener('click', () => { for (let i = 0; i < (mapRows * mapCols) / stepSize; i++) Iterate(context); Draw(context); });
 
     function Reset() {
-        iterations = Math.floor((mapCols * mapRows) / 4);
+        iterations = Math.floor((mapCols * mapRows) / stepSize);
         const seedInput = document.getElementById('seed');
         const seed = seedInput ? seedInput.value : undefined;
         random = new Random(seed);
