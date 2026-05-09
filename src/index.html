@@ -37,9 +37,26 @@
         <button id="complete">🪄</button>
         <label for="speedSlider">Speed:</label>
         <input type="range" id="speedSlider" min="1" max="10" value="5" />
+        <label for="debugMaster" style="margin-left:1em;">
+            <input type="checkbox" id="debugMaster" /> debug
+        </label>
     </div>
     <div id="debugDiv" style="display:none;">
-        <canvas id="debugCanvas" width="800" height="600" style="border:1px solid #000; display:block;"></canvas>
+        <div id="debugToggles" style="display:flex; flex-wrap:wrap; gap:0.5em; margin-bottom:0.5em;">
+            <label><input type="checkbox" id="dbg-ids" /> ids</label>
+            <label><input type="checkbox" id="dbg-probs" /> probs</label>
+            <label><input type="checkbox" id="dbg-grid" /> grid</label>
+            <label><input type="checkbox" id="dbg-heights" /> heights</label>
+            <label><input type="checkbox" id="dbg-adjacency" /> adjacency</label>
+            <label><input type="checkbox" id="dbg-hover" /> hover</label>
+            <label title="Takes effect on next Reset"><input type="checkbox" id="dbg-dumpInit" /> dumpInit</label>
+        </div>
+        <div id="colorLegend" style="margin-bottom:0.5em;"></div>
+        <div style="display:flex; gap:1em; align-items:flex-start;">
+            <canvas id="heightCanvas" style="border:1px solid #000; display:none;"></canvas>
+            <pre id="infoPanel" style="display:none; margin:0; padding:0.5em; border:1px solid #ccc; font-family:'Courier New',monospace; min-width:14em;">hover a cell</pre>
+        </div>
+        <canvas id="debugCanvas" width="800" height="600" style="border:1px solid #000; display:none;"></canvas>
     </div>
     <script type="module" src="tiles.mjs"></script>
     <!-- main loads logic as ES modules; tiles.js remains a plain script to provide Tiles/Colors globals for now -->
